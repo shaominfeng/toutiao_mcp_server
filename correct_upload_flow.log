@@ -1,0 +1,26 @@
+2025-05-29 08:53:53,448 - INFO - 正在初始化今日头条MCP服务器...
+2025-05-29 08:53:53,449 - INFO - 可用功能:
+2025-05-29 08:53:53,449 - INFO - - 用户认证: login_with_credentials, check_login_status, logout
+2025-05-29 08:53:53,449 - INFO - - 内容发布: publish_article, publish_micro_post
+2025-05-29 08:53:53,449 - INFO - - 内容管理: get_article_list, delete_article
+2025-05-29 08:53:53,449 - INFO - - 数据分析: get_account_overview, get_article_stats, get_trending_analysis
+2025-05-29 08:53:53,449 - INFO - - 报告生成: get_content_performance, generate_report
+2025-05-29 08:53:53,450 - INFO - - 多平台兼容: publish_xiaohongshu_data, publish_single_xiaohongshu_record
+2025-05-29 08:53:53,450 - INFO - - 格式转换: convert_xiaohongshu_format, process_feishu_records
+2025-05-29 08:53:53,451 - INFO - 已加载 29 个 Cookie
+2025-05-29 08:53:53,451 - INFO - 服务实例初始化成功
+2025-05-29 08:53:53,452 - INFO - 已加载 29 个 Cookie
+2025-05-29 08:53:53,687 - INFO - 登录状态验证成功 (未检测到登录页面)
+2025-05-29 08:54:00,175 - INFO - 正在初始化今日头条MCP服务器...
+2025-05-29 08:54:00,175 - INFO - 可用功能:
+2025-05-29 08:54:00,175 - INFO - - 用户认证: login_with_credentials, check_login_status, logout
+2025-05-29 08:54:00,176 - INFO - - 内容发布: publish_article, publish_micro_post
+2025-05-29 08:54:00,176 - INFO - - 内容管理: get_article_list, delete_article
+2025-05-29 08:54:00,176 - INFO - - 数据分析: get_account_overview, get_article_stats, get_trending_analysis
+2025-05-29 08:54:00,176 - INFO - - 报告生成: get_content_performance, generate_report
+2025-05-29 08:54:00,176 - INFO - - 多平台兼容: publish_xiaohongshu_data, publish_single_xiaohongshu_record
+2025-05-29 08:54:00,177 - INFO - - 格式转换: convert_xiaohongshu_format, process_feishu_records
+2025-05-29 08:54:00,177 - INFO - 已加载 29 个 Cookie
+2025-05-29 08:54:00,178 - INFO - 服务实例初始化成功
+2025-05-29 08:54:00,178 - INFO - 已加载 29 个 Cookie
+2025-05-29 08:54:00,399 - INFO - 登录状态验证成功 (未检测到登录页面)
