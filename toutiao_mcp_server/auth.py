@@ -79,33 +79,31 @@ class TouTiaoAuth:
     def _setup_driver(self) -> webdriver.Chrome:
         """设置 Chrome 浏览器驱动"""
         chrome_options = Options()
-        
+
         # 添加浏览器选项
         for option in SELENIUM_CONFIG['chrome_options']:
             chrome_options.add_argument(option)
-        
+
         # 设置用户代理
         chrome_options.add_argument(f"--user-agent={DEFAULT_HEADERS['User-Agent']}")
-        
+
         # 如果配置为无头模式
         if SELENIUM_CONFIG.get('headless', False):
             chrome_options.add_argument('--headless')
-        
-        # 直接使用本地ChromeDriver路径
-        driver_path = r"C:\code\chromedrivers\chromedriver-win64\chromedriver.exe"
-        
-        if not os.path.exists(driver_path):
-            raise Exception(f"ChromeDriver文件不存在: {driver_path}")
-        
-        logger.info(f"使用ChromeDriver: {driver_path}")
-        
-        # 创建服务和驱动
-        service = Service(executable_path=driver_path)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        
+
+        # 使用 webdriver-manager 自动管理 ChromeDriver
+        try:
+            logger.info("正在准备 ChromeDriver...")
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            logger.info("ChromeDriver 初始化成功")
+        except Exception as e:
+            logger.error(f"ChromeDriver 初始化失败: {e}")
+            raise
+
         # 设置超时时间
         driver.implicitly_wait(SELENIUM_CONFIG['implicit_wait'])
-        
+
         return driver
     
     def login_with_selenium(self, username: Optional[str] = None, password: Optional[str] = None) -> bool:
