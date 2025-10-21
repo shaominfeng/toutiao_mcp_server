@@ -164,17 +164,16 @@ class TouTiaoPublisher:
         if SELENIUM_CONFIG.get('headless', False):
             chrome_options.add_argument('--headless')
         
-        # 直接使用本地ChromeDriver路径
-        driver_path = r"C:\code\chromedrivers\chromedriver-win64\chromedriver.exe"
-        
-        if not os.path.exists(driver_path):
-            raise Exception(f"ChromeDriver文件不存在: {driver_path}")
-        
-        logger.info(f"使用ChromeDriver: {driver_path}")
-        
-        # 创建服务和驱动
-        service = Service(executable_path=driver_path)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        # 使用 webdriver-manager 自动管理 ChromeDriver
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            logger.info("正在准备 ChromeDriver...")
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            logger.info("ChromeDriver 初始化成功")
+        except Exception as e:
+            logger.error(f"ChromeDriver 初始化失败: {e}")
+            raise
         
         # 设置超时时间
         driver.implicitly_wait(SELENIUM_CONFIG['implicit_wait'])
@@ -839,53 +838,163 @@ class TouTiaoPublisher:
             # 传递登录Cookie
             self._transfer_cookies_to_driver(driver)
             
-            # 打开微头条发布页面
+            # 打开微头条发布页面 - 使用正确的URL
             logger.info("正在打开微头条发布页面...")
-            driver.get("https://mp.toutiao.com/profile_v4/ugc/weitt-new")
-            time.sleep(5)  # 等待页面加载
-            
+            correct_url = "https://mp.toutiao.com/profile_v4/weitoutiao/publish?from=toutiao_pc"
+            driver.get(correct_url)
+
+            # 等待页面完全加载 - 增加等待时间
+            logger.info("等待页面完全加载...")
+            time.sleep(15)  # 增加到15秒，给页面充足时间加载
+
+            # 检查当前URL
+            current_url = driver.current_url
+            logger.info(f"当前页面URL: {current_url}")
+
             # 检查是否需要重新登录
-            if "login" in driver.current_url or "auth" in driver.current_url:
-                logger.warning("需要重新登录，请先运行登录脚本")
+            if "login" in current_url or "auth" in current_url:
+                logger.warning("需要重新登录，页面已重定向到登录页")
+                logger.info(f"重定向URL: {current_url}")
+
+                # 保存截图用于调试
+                try:
+                    screenshot_path = "debug_micro_post_login_required.png"
+                    driver.save_screenshot(screenshot_path)
+                    logger.info(f"已保存登录页面截图: {screenshot_path}")
+                except Exception as e:
+                    logger.warning(f"保存截图失败: {e}")
+
                 return {
                     'success': False,
-                    'message': '需要重新登录，请先运行登录脚本'
+                    'message': '需要重新登录，Cookie可能已过期，请先运行 python login_simple.py 重新登录'
                 }
             
-            # 等待编辑器加载
-            try:
-                logger.info("等待编辑器加载...")
-                editor = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".ProseMirror, textarea.byte-textarea-content, [contenteditable='true']"))
-                )
-                logger.info("编辑器加载完成")
-                time.sleep(1)
-            except Exception as e:
-                logger.error(f"等待编辑器超时: {e}")
+            # 尝试多种编辑器选择器 - 针对微头条发布页面优化
+            logger.info("开始查找编辑器元素...")
+            editor = None
+            editor_selectors = [
+                # 最常见的编辑器选择器
+                ".ProseMirror",
+                "div.ProseMirror",
+                # 今日头条常用的编辑器类名
+                ".syl-editor .ProseMirror",
+                ".publish-box .ProseMirror",
+                ".wtt-publish-wrap .ProseMirror",
+                # Textarea 元素
+                "textarea",
+                "textarea.byte-textarea-content",
+                # Contenteditable 元素
+                "[contenteditable='true']",
+                "div[contenteditable='true']",
+                # 其他可能的选择器
+                "div[role='textbox']",
+                ".syl-editor",
+                "div[class*='editor']",
+                "div[data-slate-editor='true']",
+            ]
+
+            # 使用更长的超时时间（30秒）
+            for idx, selector in enumerate(editor_selectors):
+                try:
+                    logger.info(f"尝试选择器 {idx + 1}/{len(editor_selectors)}: {selector}")
+                    editor = WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                    )
+                    if editor and editor.is_displayed():
+                        logger.info(f"✅ 找到编辑器元素: {selector}")
+                        logger.info(f"   标签名: {editor.tag_name}")
+                        logger.info(f"   Class: {editor.get_attribute('class')}")
+                        logger.info(f"   是否可见: {editor.is_displayed()}")
+                        logger.info(f"   是否启用: {editor.is_enabled()}")
+                        break
+                    else:
+                        logger.debug(f"元素存在但不可见: {selector}")
+                        editor = None
+                except Exception as e:
+                    logger.debug(f"选择器 {selector} 未找到元素: {str(e)[:100]}")
+                    continue
+
+            if not editor:
+                logger.error("所有编辑器选择器都未找到元素")
+
+                # 保存页面源代码用于调试
+                try:
+                    with open("debug_micro_post_page_source.html", "w", encoding="utf-8") as f:
+                        f.write(driver.page_source)
+                    logger.info("已保存页面源代码: debug_micro_post_page_source.html")
+                except Exception as e:
+                    logger.warning(f"保存页面源代码失败: {e}")
+
+                # 保存截图
+                try:
+                    screenshot_path = "debug_micro_post_no_editor.png"
+                    driver.save_screenshot(screenshot_path)
+                    logger.info(f"已保存截图: {screenshot_path}")
+                except Exception as e:
+                    logger.warning(f"保存截图失败: {e}")
+
                 return {
                     'success': False,
-                    'message': '编辑器加载超时，请检查网络'
+                    'message': f'编辑器加载超时。访问的URL: {correct_url}。请查看调试文件：debug_micro_post_no_editor.png 和 debug_micro_post_page_source.html'
                 }
-            
+
+            logger.info("编辑器加载完成")
+            time.sleep(2)  # 等待编辑器完全就绪
+
             # 输入内容
             try:
                 logger.info("正在输入微头条内容...")
                 # 如果找到的是textarea元素
                 if editor.tag_name.lower() == 'textarea':
+                    logger.info("使用 textarea.send_keys() 方法输入内容")
                     editor.clear()
                     editor.send_keys(micro_content)
                 else:
-                    # 如果是contenteditable元素
-                    editor.click()
-                    time.sleep(1)
+                    # 如果是contenteditable元素或ProseMirror编辑器
+                    logger.info("使用 contenteditable + JavaScript 方法输入内容")
+                    # 先点击编辑器使其获得焦点
+                    try:
+                        editor.click()
+                        time.sleep(1)
+                    except:
+                        pass
+
                     # 使用JavaScript插入内容
-                    safe_content = micro_content.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$')
-                    driver.execute_script(f"arguments[0].innerHTML = `{safe_content}`", editor)
-                    
+                    safe_content = micro_content.replace('\\', '\\\\').replace('`', '\\`').replace('$', '\\$').replace('\n', '<br>')
+
+                    # 尝试多种方式插入内容
+                    try:
+                        # 方法1：直接设置innerHTML
+                        driver.execute_script(f"arguments[0].innerHTML = `<p>{safe_content}</p>`", editor)
+                        time.sleep(1)
+                    except:
+                        try:
+                            # 方法2：设置textContent
+                            driver.execute_script(f"arguments[0].textContent = `{safe_content}`", editor)
+                            time.sleep(1)
+                        except:
+                            # 方法3：使用send_keys
+                            editor.send_keys(micro_content)
+
+                    # 触发输入事件
+                    driver.execute_script("""
+                        var event = new Event('input', { bubbles: true });
+                        arguments[0].dispatchEvent(event);
+                    """, editor)
+
                 logger.info("微头条内容输入完成")
                 time.sleep(2)
             except Exception as e:
                 logger.error(f"输入微头条内容失败: {e}")
+
+                # 保存截图
+                try:
+                    screenshot_path = "debug_micro_post_input_failed.png"
+                    driver.save_screenshot(screenshot_path)
+                    logger.info(f"已保存截图: {screenshot_path}")
+                except:
+                    pass
+
                 return {
                     'success': False,
                     'message': f'输入内容失败: {str(e)}'
@@ -1093,4 +1202,4 @@ class TouTiaoPublisher:
             return {
                 'success': False,
                 'message': f'删除异常: {str(e)}'
-            } 
+            }
