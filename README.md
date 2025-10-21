@@ -123,15 +123,59 @@ async def multi_platform_publish():
 asyncio.run(multi_platform_publish())
 ```
 
-### 3. 基本功能使用
+### 3. 登录今日头条
 
-**登录今日头条：**
-```python
-# 通过MCP工具调用
-result = login_with_credentials("your_username", "your_password")
+**方式一：使用登录脚本（推荐）**
+
+```bash
+# 运行简单登录脚本
+python login_simple.py
 ```
 
-**发布内容：**
+这个脚本会：
+- 自动打开 Chrome 浏览器窗口
+- 跳转到今日头条登录页面
+- 等待你手动完成登录（手机号 + 验证码）
+- 自动保存 Cookie 到本地
+- 下次启动服务器会自动加载登录状态
+
+**登录注意事项：**
+1. 今日头条使用手机号 + 验证码登录
+2. 需要手动在浏览器中输入手机号并获取验证码
+3. 登录成功后浏览器会自动关闭
+4. Cookie 保存在 `toutiao_cookies.json` 文件中
+5. 支持 Windows、macOS、Linux 系统
+
+**方式二：通过 MCP 工具调用**
+
+如果你的服务器已经启动,可以通过 MCP 接口调用登录:
+
+```python
+# 注意:登录需要参数,但实际会打开浏览器手动登录
+# username 和 password 参数可以留空
+from toutiao_mcp_server.server import login_with_credentials
+
+result = login_with_credentials("", "")
+print(result)
+```
+
+**方式三：通过代码直接调用**
+```python
+from toutiao_mcp_server.auth import TouTiaoAuth
+
+# 初始化认证管理器
+auth = TouTiaoAuth()
+
+# 执行登录（会打开浏览器窗口）
+success = auth.login_with_selenium()
+
+if success:
+    print("登录成功!")
+```
+
+### 4. 发布内容
+
+**发布图文文章：**
 ```python
 # 发布图文文章
 result = publish_article(
